@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>I <3 JavaScript</title>
+    <script src="http://chatbuilder.hackreactor.com/ChatBuilder.js"></script>
+  </head>
+  <body> 
+
+    <script>
+
+		// Hack Reactor ChatBuilder Challenge	
+		// Author: Drew Cuthbertson
+		// Email: drewcuth1@gmail.com
+		// Date: 2/4/2014
+	
+		$(document).ready(function(){		
+			delete Chat.display;
+			delete Chat.fetch;
+			delete Chat.send;
+
+			
+			var messageTotal = 0;
+			var messageHistory = 10;
+			var needToDisplay = true;
+			var lastMessage;	
+			
+			// Removes the top (oldest) x messages to maintain the message limit.
+			function maintainMessageLimit(messageLimit){
+				while(messageTotal > messageLimit) {
+					$('.messages li').first().remove();
+					messageTotal --;
+				}
+			}		
+			
+			// Adds a message to the DOM.
+			// Note: used mainly as callback for fetchMessages.
+			function displayNextMessage(message){
+				$("ul").append("<li>" + message + "</li>");
+				messageTotal++;
+				maintainMessageLimit(messageHistory);
+			}
+						
+			// Retrieves messages from the server, then displays
+			// any messages that have not already been displayed.
+			// Note: the server only supplies the last 10 messages sent.
+			function fetchMessages(callback){
+				$.get("https://api.parse.com/1/classes/chats?order=createdAt", 
+					function(response){
+						var messagesDetails = response.results;
+						for (var i = 0;i<messagesDetails.length;i++){
+							if(needToDisplay) callback(messagesDetails[i].text);
+							else if(messagesDetails[i].createdAt==lastMessage) needToDisplay = true;
+						}	
+						lastMessage = messagesDetails[i-1].createdAt;
+						needToDisplay = false;
+					});
+			}
+			
+			// Displays messages sent since the last time displayNew was called.
+			function displayNew(){
+				fetchMessages(displayNextMessage);
+			}			
+		
+			// Sends message to the server.
+			function sendMessage(message){
+				$.post("https://api.parse.com/1/classes/chats",
+					JSON.stringify({text:Chat.username + ": " + message})
+				);
+			}
+		
+			// Sends text in form to the server.
+			// Note: used specifically as a callback within event handlers below.
+			function onSend(){
+				var form = $('.draft');
+				var message = form.val();
+				form.val("");
+				sendMessage(message);
+			}
+			
+			
+			displayNew();
+			window.setInterval(displayNew, 3000);			
+		
+		
+			$(".send").on('click',onSend);
+			
+			// Submits message on 'enter'.
+			$(".draft").on('keypress',function(e){
+				if(e.which == 13) onSend();
+			});
+				
+			// Changes the number of displayed messages to a user-specified value.
+			$(".options").on('click',function(){
+				var history = prompt("How many messages should I display?");
+				messageHistory = history !== null ? history : messageHistory;
+				maintainMessageLimit(messageHistory);
+			});
+			
+			// Clears displayed messages.
+			$('.clear').on('click',function(){
+				maintainMessageLimit(0);
+			});
+		});
+		
+	
+    </script>
+
+    <h2>Cuthbertson Chatbuilder</h2>
+
+    <ul class="messages">
+
+    </ul>
+	<button class="options">Options</button>
+	<input class="draft" type="text"/> <button class="send">Send</button>
+	<button class="clear">Clear Chat</button>
+  </body>
+</html>
